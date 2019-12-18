@@ -18,55 +18,66 @@ handler.setFormatter(formatter)
 
 logger.addHandler(handler)
 
-split_from_regex = re.compile('(?P<from_label>("(.*)")|(.*))(.*)<(?P<from_address>.*)>')
+split_from_regex = re.compile('(?P<from_label>.*)<(?P<from_address>.*)>$')
 address_domain_regex = re.compile('.*@(?P<domain>[\.\w-]+)')
 
 
-def splitFromHeader(value):
+def parseFromHeader(value):
     """Split 'From:' header into label and address values."""
     match = split_from_regex.match(value)
-    return {
+    result = {
         'label': match.group('from_label').strip(),
         'address': match.group('from_address').strip()
     }
+    result['label_domain'] = getDomainFromLabel(result['label'])
+    result['address_domain'] = getDomainFromAddress(result['address'])
+    return result
 
 
-def labelContainsAddress(label):
+def getDomainFromLabel(label):
     """ Check whether given 'From:' header label contains something that looks like an email address."""
-    return address_domain_regex.match(label) is not None
+    match = address_domain_regex.match(label)
+    return match.group('domain').strip() if match is not None else None
 
 
-def labelAndAddressDomainsMatch(split):
-    label_domain = address_domain_regex.match(split['label']).group('domain').strip()
-    address_domain = address_domain_regex.match(split['address']).group('domain').strip()
-    return label_domain.lower() == address_domain.lower()
+def getDomainFromAddress(address):
+    match = address_domain_regex.match(address)
+    return match.group('domain').strip() if match is not None else None
 
 
 class SuspiciousFrom(Milter.Base):
     def __init__(self):
         self.id = Milter.uniqueID()
+        self.reset()
+        logger.info(f"({self.id}) Instanciated.")
+
+    def reset(self):
         self.final_result = Milter.ACCEPT
         self.new_headers = []
-        logger.info(f"{self.id} got fired up.")
 
     def header(self, field, value):
         """Header hook gets called for every header within the email processed."""
         if field.lower() == 'from':
-            logger.info(f"Got \"From:\" header with raw value: '{value}'")
-            split = splitFromHeader(value)
-            logger.info(f"Label: {split['label']}, address: {split['address']}")
-            if labelContainsAddress(split['label']):
-                logger.info()
-                if labelAndAddressDomainsMatch(split):
-                    self.new_headers.append({'name': 'X-From-Checked', 'value': 'Maybe multiple domains - no match - BAD!'})
-                    self.final_result = Milter.ACCEPT
+            logger.debug(f"({self.id}) Got \"From:\" header raw value: '{value}'")
+            value = value.strip('\n').strip()
+            if value == '':
+                logger.info(f"Got empty from header value! WTF! Skipping.")
+                return Milter.CONTINUE
+            data = parseFromHeader(value)
+            logger.info(f"({self.id}) Label: '{data['label']}', Address: '{data['address']}'")
+            if data['label_domain'] is not None:
+                logger.debug(f"({self.id}) Label '{data['label']}' contains an address with domain '{data['label_domain']}'.")
+                if data['label_domain'].lower() == data['address_domain'].lower():
+                    logger.info(f"({self.id}) Label domain '{data['label_domain']}' matches address domain '{data['address_domain']}'. Good!")
+                    self.new_headers.append({'name': 'X-From-Checked', 'value': 'OK - Label domain matches address domain'})
                 else:
-                    self.new_headers.append({'name': 'X-From-Checked', 'value': 'Multiple domains - no match - BAD!'})
-                    self.final_result = Milter.ACCEPT
+                    logger.info(f"({self.id}) Label domain '{data['label_domain']}' did NOT match address domain '{data['address_domain']}'. BAD!")
+                    self.new_headers.append({'name': 'X-From-Checked', 'value': 'FAIL - Label domain does NOT match address domain'})
             else:
                 # Supposedly no additional address in the label, accept it for now
                 # TODO: Also decode utf-8 weirdness and check in there
-                self.new_headers.append({'name': 'X-From-Checked', 'value': 'Yes, no address in label.'})
+                logger.info(f"({self.id}) Label '{data['label']}' probably did not contain an address. Everything is fine.")
+                self.new_headers.append({'name': 'X-From-Checked', 'value': 'OK - No address found in label'})
                 self.final_result = Milter.ACCEPT
         # Use continue here, so we can reach eom hook.
         # TODO: Log and react if multiple From-headers are found?
@@ -74,9 +85,11 @@ class SuspiciousFrom(Milter.Base):
 
     def eom(self):
         """EOM hook gets called at the end of message processed. Headers and final verdict are applied only here."""
-        # Finish up message according to results collected on the way.
+        logger.info(f"({self.id}) EOM: Final verdict is {self.final_result}. New headers: {self.new_headers}")
         for new_header in self.new_headers:
             self.addheader(new_header['name'], new_header['value'])
+        logger.info(f"({self.id}) EOM: Reseting self.")
+        self.reset()
         return self.final_result
 
 
