@@ -22,8 +22,12 @@ split_from_regex = re.compile('(?P<from_label>.*)<(?P<from_address>.*)>$')
 address_domain_regex = re.compile('.*@(?P<domain>[\.\w-]+)')
 
 
+def normalizeRawFromHeader(value):
+    return value.replace('\n', '').replace('\r', '').strip()
+
+
 def parseFromHeader(value):
-    """Split 'From:' header into label and address values."""
+    """Split 'From:'-header into label and address values."""
     match = split_from_regex.match(value)
     result = {
         'label': match.group('from_label').strip(),
@@ -59,7 +63,7 @@ class SuspiciousFrom(Milter.Base):
         """Header hook gets called for every header within the email processed."""
         if field.lower() == 'from':
             logger.debug(f"({self.id}) Got \"From:\" header raw value: '{value}'")
-            value = value.strip('\n').strip()
+            value = normalizeRawFromHeader(value)
             if value == '':
                 logger.info(f"Got empty from header value! WTF! Skipping.")
                 return Milter.CONTINUE
