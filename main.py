@@ -29,6 +29,8 @@ def normalizeRawFromHeader(value):
 def parseFromHeader(value):
     """Split 'From:'-header into label and address values."""
     match = split_from_regex.match(value)
+    if match is None:
+        return None
     result = {
         'label': match.group('from_label').strip(),
         'address': match.group('from_address').strip()
@@ -53,7 +55,7 @@ class SuspiciousFrom(Milter.Base):
     def __init__(self):
         self.id = Milter.uniqueID()
         self.reset()
-        logger.info(f"({self.id}) Instanciated.")
+        logger.debug(f"({self.id}) Instanciated.")
 
     def reset(self):
         self.final_result = Milter.ACCEPT
@@ -68,6 +70,9 @@ class SuspiciousFrom(Milter.Base):
                 logger.info(f"Got empty from header value! WTF! Skipping.")
                 return Milter.CONTINUE
             data = parseFromHeader(value)
+            if data is None:
+                logger.info(f"Failed to parse given from header value! Skipping.")
+                return Milter.CONTINUE
             logger.info(f"({self.id}) Label: '{data['label']}', Address: '{data['address']}'")
             if data['label_domain'] is not None:
                 logger.debug(f"({self.id}) Label '{data['label']}' contains an address with domain '{data['label_domain']}'.")
@@ -92,7 +97,7 @@ class SuspiciousFrom(Milter.Base):
         logger.info(f"({self.id}) EOM: Final verdict is {self.final_result}. New headers: {self.new_headers}")
         for new_header in self.new_headers:
             self.addheader(new_header['name'], new_header['value'])
-        logger.info(f"({self.id}) EOM: Reseting self.")
+        logger.debug(f"({self.id}) EOM: Reseting self.")
         self.reset()
         return self.final_result
 
