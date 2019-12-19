@@ -1,0 +1,13 @@
+[Unit]
+Description=Start and Stop pymilter-suspicious-from
+After=syslog.target network.target
+
+[Service]
+ExecStart=/srv/venv/pymilter-suspicious-from/bin/python /srv/repo/pymilter-suspicious-from/main.py 
+
+# Use an unprivileged user here
+User=pymilter-suspicious-from
+
+[Install]
+WantedBy=multi-user.target
+
