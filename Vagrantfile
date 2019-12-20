@@ -48,8 +48,8 @@ Vagrant.configure("2") do |config|
   SHELL
 
   config.trigger.after :up do |t|
-    t.info = "rsync"
-    t.run = {inline: "vagrant rsync"}
+    #t.info = "rsync"
+    #t.run = {inline: "vagrant rsync"}
     # If you want it running in the background switch these
     #t.run = {inline: "bash -c 'vagrant rsync-auto bork &'"}
   end
