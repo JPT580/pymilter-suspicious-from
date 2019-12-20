@@ -27,7 +27,7 @@ address_domain_regex = re.compile('.*@(?P<domain>[\.\w-]+)')
 
 
 def get_decoded_header(value):
-    """Use python builtins to decode from header properly."""
+    """Use python builtins to decode encoding stuff from header properly."""
     decoded_header_items = decode_header(value)
     decoded_header_value = ''
     for item in decoded_header_items:
@@ -35,7 +35,7 @@ def get_decoded_header(value):
         if isinstance(decoded_item, bytes):
             decoded_item = decoded_item.decode('ascii')
         decoded_header_value += decoded_item
-    return getaddresses([decoded_header_value])[0]
+    return decoded_header_value
 
 
 def normalizeRawFromHeader(value):
@@ -69,10 +69,14 @@ class SuspiciousFrom(Milter.Base):
             if value == '':
                 logger.warn(f"Got empty from header value! WTF! Skipping.")
                 return Milter.CONTINUE
-            data = get_decoded_header(value)
+            decoded_from = get_decoded_header(value)
+            logger.debug(f"({self.id}) Decoded from as a whole: '{decoded_from}'")
+            data = getaddresses([decoded_from])[0]
             logger.info(f"({self.id}) Label: '{data[0]}', Address: '{data[1]}'")
             if data[0] == '':
-                logger.info(f"({self.id}) No label in from header, OK!")
+                logger.info(f"({self.id}) No label in from header, should be OK!")
+                if decoded_from.count('@') > 1:
+                    logger.info(f"({self.id}) Raw decoded from header contains multiple '@'-charecters - investigating!")
                 self.new_headers.append({'name': 'X-From-Checked', 'value': 'OK - No label specified'})
                 self.new_headers.append({'name': 'X-From-Suspicious', 'value': 'NO'})
             else:
