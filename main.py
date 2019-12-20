@@ -83,6 +83,7 @@ class SuspiciousFrom(Milter.Base):
                 decoded_from = normalizeRawFromHeader(decoded_from)
                 logger.info(f"({self.id}) \"From:\" decoded cleaned: '{decoded_from}'")
                 all_domains = address_domain_regex.findall(decoded_from)
+                all_domains = [a.lower() for a in all_domains]
                 if len(all_domains) == 0:
                     logger.warning(f"({self.id}) No domain in decoded \"From:\" - WTF! OK, though")
                     self.set_suspicious_headers(False, "No domains in decoded FROM")
