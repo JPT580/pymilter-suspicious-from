@@ -32,9 +32,9 @@ def get_decoded_header(value):
     decoded_header_items = decode_header(value)
     decoded_header_value = ''
     for item in decoded_header_items:
-        decoded_item = item[0].decode(item[1], 'replace') if item[1] is not None else item[0]
+        decoded_item = item[0].decode(item[1], 'ignore') if item[1] is not None else item[0]
         if isinstance(decoded_item, bytes):
-            decoded_item = decoded_item.decode('ascii', 'replace')
+            decoded_item = decoded_item.decode('ascii', 'ignore')
         decoded_header_value += decoded_item
     return decoded_header_value
 
