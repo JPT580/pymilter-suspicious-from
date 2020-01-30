@@ -2,4 +2,4 @@ wheel==0.33.6
 
 # Using a fork until UnicodeDecodeError related issues are fixed in main project
 #pymilter==1.0.4
--e git://github.com/william6502/pymilter.git@e3519baa0cdb5e9d6ee7e483b89f8defa98fc9c4#egg=pymilter
+-e git://github.com/sdgathman/pymilter.git@222afcd555e7bc2491c255658597d68928e6b9c3#egg=pymilter
