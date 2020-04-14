@@ -32,7 +32,12 @@ def get_decoded_header(value):
     decoded_header_items = decode_header(value)
     decoded_header_value = ''
     for item in decoded_header_items:
-        decoded_item = item[0].decode(item[1], 'ignore') if item[1] is not None else item[0]
+        try:
+            decoded_item = item[0].decode(item[1], 'ignore') if item[1] is not None else item[0]
+        except:
+            logger.warning(f"Decoding went wrong for value '{value}'!")
+            # Pretend decoded item is empty :-(
+            decoded_item = ''
         if isinstance(decoded_item, bytes):
             decoded_item = decoded_item.decode('ascii', 'ignore')
         decoded_header_value += decoded_item
@@ -121,6 +126,14 @@ def main():
     Milter.runmilter("SuspiciousFromMilter", config.milter_socket, config.milter_timeout, rmsock=False)
     logger.info(f"Milter finished running.")
 
+def test():
+    # simple method to deal with unexpected exceptions on the fly :(
+    test_from_value = '=?UNKNOWN?Q?Nat=E1lia?= Reis via DBWorld <dbworld@cs.wisc.edu>'
+    logger.info(f"Begin of test().")
+    test_instance = SuspiciousFrom()
+    test_instance.header('from', test_from_value)
+    logger.info(f"End of test().")
 
 if __name__ == "__main__":
+    #test()
     main()
