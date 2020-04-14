@@ -128,7 +128,7 @@ def main():
 
 def test():
     # simple method to deal with unexpected exceptions on the fly :(
-    test_from_value = '=?UNKNOWN?Q?Nat=E1lia?= Reis via DBWorld <dbworld@cs.wisc.edu>'
+    test_from_value = '=?UNKNOWN?Q?=E1?= Foo <foo@example.com>'
     logger.info(f"Begin of test().")
     test_instance = SuspiciousFrom()
     test_instance.header('from', test_from_value)
